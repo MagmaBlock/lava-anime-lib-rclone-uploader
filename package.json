@@ -11,19 +11,14 @@
   "author": "MagmaBlock",
   "license": "ISC",
   "dependencies": {
-    "anime-file-parser": "^1.0.8",
     "axios": "^1.4.0",
     "axios-retry": "^3.5.1",
     "chalk": "^5.3.0",
     "commander": "^11.0.0",
     "dayjs": "^1.11.9",
-    "dotenv": "^16.3.1",
     "inquirer": "^9.2.8",
     "inquirer-press-to-continue": "^1.2.0",
     "minimist": "^1.2.8",
     "ora": "^6.3.1"
-  },
-  "devDependencies": {
-    "dingtalk-robot-sdk": "^1.1.0"
   }
 }

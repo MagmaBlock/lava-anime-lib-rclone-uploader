@@ -1,4 +1,3 @@
-import parseFileName from "anime-file-parser";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import chalk from "chalk";
@@ -10,14 +9,16 @@ import PressToContinuePrompt from "inquirer-press-to-continue";
 import minimist from "minimist";
 import ora from "ora";
 import path, { dirname } from "path";
+
 import { fileURLToPath } from "url";
+
+import { reportSuccess } from "./src/actions/reportSuccess.js";
+import { sendMiraiMessage } from "./src/api/sendMiraiMessage.js";
+import { config } from "./src/tools/config.js";
 
 inquirer.registerPrompt("press-to-continue", PressToContinuePrompt);
 
-// config
-const sendMessage = true; // 是否发送 QQ 消息
-// 在此填写 LavaAnimeLib 之前 (不含 LavaAnimeLib) 的路径
-const destDrive = ["D:", "E:", "2AG:"];
+const destDrive = config.rcloneDestinations;
 
 // meta
 const scriptPath = dirname(fileURLToPath(import.meta.url));
@@ -31,16 +32,17 @@ console.log("\n若想要再次运行本任务，可以使用以下指令");
 console.log(chalk.gray(reRunCommand));
 console.log("\n");
 
-// store
+// storage
 const uploadTasks = [];
 const uploadFails = [];
 
 // 任务分析部分
-const filePathArray = options.filePath.split(path.sep); // 单文件或其文件夹的路径
-const savePathArray = options.savePath.split(path.sep); // 下载时用户设定的保存父文件夹
-const saveDirName = path.basename(options.savePath);
-const bgmID = saveDirName.match(/\d+$/);
-const animeTitle = saveDirName.replace(bgmID, "");
+const filePathArray = options.filePath.split(path.sep); // 下载的文件或文件夹的绝对路径
+const savePathArray = options.savePath.split(path.sep); // 下载时用户设定的保存父文件夹（番剧文件夹）
+const saveDirName = path.basename(options.savePath); // 番剧文件夹名
+const bgmID = saveDirName.match(/\d+$/); // Bangumi ID
+const animeTitle = saveDirName.replace(bgmID, ""); // Title
+
 // LavaAnimeLib 文件夹所在的索引
 const rootIndex = savePathArray.findIndex(
   (pathSection) => pathSection == "LavaAnimeLib"
@@ -104,18 +106,23 @@ if (uploadFails.length) {
     );
 
     // 消息告警
-    await sendGroupMessage(`上传重试失败! 请检查任务 ${taskID} 并及时重传`);
+    await sendMiraiMessage([
+      {
+        type: "Plain",
+        text: `上传重试失败! 请检查任务 ${taskID} 并及时重传`,
+      },
+    ]);
     // 无法上传, 直接停止运行
     console.error(chalk.red(`上传重试失败! 请检查任务 ${taskID} 并及时重传`));
   }
   // 开始报喜
   else {
-    await doSuccess();
+    await reportSuccess(options.savePath, options.name);
   }
 }
 // 开始报喜
 else {
-  await doSuccess();
+  await reportSuccess(options.savePath, options.name);
 }
 
 // 暂停脚本
@@ -179,91 +186,3 @@ axiosRetry(axios, {
     return 1000 * Math.pow(2, retryCount);
   },
 });
-
-/**
- * QQBot 发送一个群消息
- * @param {String} message
- * @param {Boolean} noCQ
- * @param {Number} groupID
- * @returns {Promise}
- */
-function sendGroupMessage(message, noCQ = false, groupID) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      let request = await axios.post(
-        "/send_group_msg",
-        {
-          group_id: groupID ?? qqGroupID,
-          message: message,
-          auto_escape: noCQ,
-        },
-        {
-          baseURL: cqHTTPEndpoint,
-        }
-      );
-      if (request.data.status !== "ok") {
-        throw "连接到 BotAPI 成功但未能发送消息";
-      }
-      resolve();
-    } catch (error) {
-      console.error("QQ 消息发送失败:", error);
-      reject();
-    }
-  });
-}
-
-/**
- * 执行成功操作
- */
-function doSuccess() {
-  return new Promise(async (resolve, reject) => {
-    console.log("");
-    const spinner = ora("正在抓取 Bangumi Subject 以获取 Poster 图");
-    spinner.start();
-
-    let subjectData;
-    try {
-      subjectData = await axios.get("https://api.bgm.tv/v0/subjects/" + bgmID, {
-        headers: { "User-Agent": "LavaAnimeLibUploader(Private Software)/1.0" },
-      });
-    } catch (error) {
-      spinner.fail(chalk.yellow("抓取封面图失败:") + (error?.message ?? error));
-    }
-    const poster =
-      subjectData?.data?.images?.large?.replace(
-        "//lain.bgm.tv",
-        "//anime-img.5t5.top"
-      ) ?? "https://anime-img.5t5.top/assets/noposter.png";
-    spinner.succeed("选用 Poster：" + chalk.gray(poster));
-
-    const animeInfo = (() => {
-      const parse = parseFileName(options.name);
-      let result = "";
-      parse.tagedName.forEach((tag) => {
-        if (typeof tag == "object") result = result + "[" + tag?.result + "] ";
-        if (typeof tag == "string") result = result + tag + " ";
-      });
-      result = result.replace(/\] \[/g, "][");
-      return result;
-    })();
-
-    const animeEpisode = (() => {
-      const episode = parseFileName(options.name).episode;
-      if (episode) {
-        return `第 ${episode} 话`;
-      } else {
-        return `未知的集数`;
-      }
-    })();
-
-    let successMessage = `[CQ:image,file=${poster}]${animeTitle} | 🎬 ${animeEpisode}\n📁 文件名称 ————\n${animeInfo}\n\n📍 下载于 Xinxiang | 🎉 上传完成`;
-    const msgSpinner = ora(
-      "尝试发送群消息\n\n" + chalk.gray(successMessage) + "\n"
-    );
-    msgSpinner.start();
-    if (sendMessage) await sendGroupMessage(successMessage);
-    msgSpinner.succeed("消息发送结束\n\n" + chalk.gray(successMessage) + "\n");
-
-    resolve();
-  });
-}

@@ -1,6 +1,6 @@
 import axios from "axios";
-import "dotenv/config.js";
+import { config } from "./config.js";
 
 export const LavaAnimeLibAPI = axios.create({
-  baseURL: process.env.LAVAANIMELIB_BASEURL,
+  baseURL: config.lavaAnimeLibBaseURL,
 });
