@@ -17,6 +17,12 @@ export async function reportSuccess(path, fileName) {
 
   const msgSpinner = ora(`正在推送更新消息到服务端...\n${reportDetails}\n`);
   msgSpinner.start();
-  await reportUploadMessage(path, fileName);
+
+  try {
+    await reportUploadMessage(path, fileName);
+  } catch (error) {
+    console.error(error, "向服务端推送消息失败...  将在 120 秒后重试");
+    setTimeout(reportSuccess(path, fileName), 120 * 1000);
+  }
   msgSpinner.succeed(`推送更新消息到服务端完成.\n${reportDetails}\n`);
 }
