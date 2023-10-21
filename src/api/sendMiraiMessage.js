@@ -9,6 +9,6 @@ export async function sendMiraiMessage(messageChain) {
     });
   } catch (error) {
     console.error(error, "发送 Mirai 消息失败, 将在 120 秒后重试");
-    setTimeout(sendMiraiMessage(messageChain), 120 * 1000);
+    setTimeout(() => sendMiraiMessage(messageChain), 120 * 1000);
   }
 }

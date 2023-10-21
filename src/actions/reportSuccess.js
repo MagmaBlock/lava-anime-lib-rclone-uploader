@@ -22,7 +22,7 @@ export async function reportSuccess(path, fileName) {
     await reportUploadMessage(path, fileName);
   } catch (error) {
     console.error(error, "向服务端推送消息失败...  将在 120 秒后重试");
-    setTimeout(reportSuccess(path, fileName), 120 * 1000);
+    setTimeout(() => reportSuccess(path, fileName), 120 * 1000);
   }
   msgSpinner.succeed(`推送更新消息到服务端完成.\n${reportDetails}\n`);
 }
