@@ -21,8 +21,10 @@ export async function reportSuccess(path, fileName) {
   try {
     await reportUploadMessage(path, fileName);
   } catch (error) {
-    console.error(error, "向服务端推送消息失败...  将在 120 秒后重试");
+    console.error(error);
+    msgSpinner.text = "向服务端推送消息失败...  将在 120 秒后重试";
     setTimeout(() => reportSuccess(path, fileName), 120 * 1000);
+    return;
   }
   msgSpinner.succeed(`推送更新消息到服务端完成.\n${reportDetails}\n`);
 }
