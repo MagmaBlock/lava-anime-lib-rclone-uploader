@@ -9,9 +9,7 @@ import PressToContinuePrompt from "inquirer-press-to-continue";
 import minimist from "minimist";
 import ora from "ora";
 import path, { dirname } from "path";
-
 import { fileURLToPath } from "url";
-
 import { reportSuccess } from "./src/actions/reportSuccess.js";
 import { sendMiraiMessage } from "./src/api/sendMiraiMessage.js";
 import { config } from "./src/tools/config.js";
@@ -137,7 +135,7 @@ setTimeout(() => {
  */
 async function runAUploadTask(task) {
   return new Promise((resolve, reject) => {
-    const rcloneCommand = `rclone copy "${task.fromPath}" "${task.destPath}" -P --local-encoding "Slash,BackSlash,Ctl,RightSpace,RightPeriod,InvalidUtf8,Dot"`;
+    const rcloneCommand = `rclone copy "${task.fromPath}" "${task.destPath}" -P --local-encoding "None"`;
     console.log(
       "\n" + chalk.green("开始运行"),
       chalk.gray.underline(rcloneCommand)
