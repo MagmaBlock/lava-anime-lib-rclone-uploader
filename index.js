@@ -11,7 +11,6 @@ import ora from "ora";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import { reportSuccess } from "./src/actions/reportSuccess.js";
-import { sendMiraiMessage } from "./src/api/sendMiraiMessage.js";
 import { config } from "./src/tools/config.js";
 
 inquirer.registerPrompt("press-to-continue", PressToContinuePrompt);
@@ -103,13 +102,6 @@ if (uploadFails.length) {
       JSON.stringify({ taskID, reRunCommand, uploadTasks, uploadFails })
     );
 
-    // 消息告警
-    await sendMiraiMessage([
-      {
-        type: "Plain",
-        text: `上传重试失败! 请检查任务 ${taskID} 并及时重传`,
-      },
-    ]);
     // 无法上传, 直接停止运行
     console.error(chalk.red(`上传重试失败! 请检查任务 ${taskID} 并及时重传`));
   }
@@ -135,7 +127,7 @@ setTimeout(() => {
  */
 async function runAUploadTask(task) {
   return new Promise((resolve, reject) => {
-    const rcloneCommand = `rclone copy "${task.fromPath}" "${task.destPath}" -P --local-encoding "None"`;
+    const rcloneCommand = `rclone copy "${task.fromPath}" "${task.destPath}" -P --local-encoding None --onedrive-encoding None`;
     console.log(
       "\n" + chalk.green("开始运行"),
       chalk.gray.underline(rcloneCommand)
