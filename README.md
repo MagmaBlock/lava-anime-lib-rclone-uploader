@@ -11,15 +11,8 @@
 * qbittorrent：需要在 `选项` - `下载` 中打开 `Torrent 完成时运行`，（最好打开 `显示控制台窗口`）并且配置如下内容：
 
 ```shell
-pnpx lava-anime-lib-rclone-uploader --name "%N" --filePath "%F" --savePath "%D"
+pnpm i lava-anime-lib-rclone-uploader -g
+lava-anime-lib-rclone-uploader --name "%N" --filePath "%F" --savePath "%D" --apiBase "https://api.abc.com" --referer "https://aaa.bbb" --rcloneDestinations "2AG:" --rcloneDestinations "XXX:"
 ```
 
 - rclone：需要预先建立好 rclone 连接到存储节点的配置文件
-
-## env
-
-```properties
-LAVA_ANIME_LIB_BASE_URL=https://anime-api.5t5.top
-LAVA_ANIME_LIB_REFERER=https://lavani.me
-RCLONE_DESTINATIONS=["D:", "2AG:"]
-```
