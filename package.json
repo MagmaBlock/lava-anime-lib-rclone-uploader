@@ -1,24 +1,37 @@
 {
-  "name": "LavaAnimeLibUploader",
+  "name": "lava-anime-lib-rclone-uploader",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "type": "module",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs"
+    }
   },
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "pnpx unbuild",
+    "start": "node dist/index.mjs",
+    "prepublish": "pnpm build"
+  },
+  "bin": "./dist/index.mjs",
   "keywords": [],
   "author": "MagmaBlock",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "axios": "^1.4.0",
     "axios-retry": "^3.5.1",
     "chalk": "^5.3.0",
     "commander": "^11.0.0",
     "dayjs": "^1.11.9",
-    "inquirer": "^9.2.8",
-    "inquirer-press-to-continue": "^1.2.0",
-    "minimist": "^1.2.8",
+    "dotenv": "^16.4.5",
     "ora": "^6.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.1.0"
   }
 }
