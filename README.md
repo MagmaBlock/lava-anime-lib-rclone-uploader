@@ -1,4 +1,4 @@
-# LavaAnimeLibUploader
+# lava-anime-lib-rclone-uploader
 
 本程序用于在下载节点上将 qbittorrent 下载的资源通过 rclone 上传至存储节点.
 
