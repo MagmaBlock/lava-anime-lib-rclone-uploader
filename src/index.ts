@@ -9,7 +9,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ora from "ora";
 import { reportSuccess } from "./actions/reportSuccess";
-import { config } from "./tools/config";
+import { createAPIInstance } from "./api/instance";
 
 // 配置 axios 重试
 axiosRetry(axios, {
@@ -27,6 +27,9 @@ interface CLIOptions {
   name: string;
   filePath: string;
   savePath: string;
+  apiBase: string;
+  referer?: string;
+  rcloneDestinations: string[];
 }
 
 const scriptPath = path.dirname(fileURLToPath(import.meta.url));
@@ -39,14 +42,26 @@ program
   .option("--name <name>", "文件名")
   .option("--filePath <filePath>", "文件路径")
   .option("--savePath <savePath>", "保存路径")
+  .option("--apiBase <apiBase>", "后端 API URL")
+  .option("--referer [referer]", "后端 API 请求 Referer")
+  .option("--rcloneDestinations <rcloneDestinations...>", "rclone 目标地址")
   .parse(process.argv);
 
 const options = program.opts() as CLIOptions;
 
-if (!options.name || !options.filePath || !options.savePath) {
+if (
+  !options.name ||
+  !options.filePath ||
+  !options.savePath ||
+  !options.apiBase ||
+  !options.rcloneDestinations ||
+  !Array.isArray(options.rcloneDestinations)
+) {
   program.help();
   process.exit(1);
 }
+
+createAPIInstance(options.apiBase, options.referer);
 
 function logTaskInfo(options: CLIOptions): void {
   console.log("\n以下为本次脚本传入的参数:");
@@ -185,7 +200,7 @@ async function main() {
   const uploadTasks = createUploadTasks(
     options.filePath,
     inLibPath,
-    config.rcloneDestinations
+    options.rcloneDestinations
   );
 
   const failedTasks: UploadTask[] = [];

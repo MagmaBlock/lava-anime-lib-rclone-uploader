@@ -1,5 +1,5 @@
 import { AxiosResponse } from "axios";
-import { LavaAnimeLibAPI } from "../tools/axiosInstance";
+import { lavaAnimeLibAPI } from "./instance";
 
 /**
  * 上报上传成功消息
@@ -11,7 +11,8 @@ export function reportUploadMessage(
   index: string,
   fileName: string
 ): Promise<AxiosResponse> {
-  return LavaAnimeLibAPI.post("/v2/report/upload-message", {
+  if (lavaAnimeLibAPI === null) return Promise.reject();
+  return lavaAnimeLibAPI.post("/v2/report/upload-message", {
     index,
     fileName,
   });
