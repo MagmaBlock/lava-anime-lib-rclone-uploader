@@ -4,25 +4,28 @@ import chalk from "chalk";
 import { Command } from "commander";
 import dayjs from "dayjs";
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ora from "ora";
+import { extractAndSaveSubtitles } from "./actions/extract-subtitles";
 import { reportSuccess } from "./actions/reportSuccess";
 import { createAPIInstance } from "./api/instance";
 
-// 配置 axios 重试
+// 配置 axios 重试机制
 axiosRetry(axios, {
   retries: 5,
-  retryDelay: (retryCount) => 1000 * Math.pow(2, retryCount),
+  retryDelay: (retryCount) => 1000 * Math.pow(2, retryCount), // 指数退避策略
 });
 
+// 定义上传任务接口
 interface UploadTask {
   fromPath: string;
   destPath: string;
   drive: string;
 }
 
+// 定义命令行选项接口
 interface CLIOptions {
   name: string;
   filePath: string;
@@ -32,9 +35,11 @@ interface CLIOptions {
   rcloneDestinations: string[];
 }
 
+// 获取脚本路径和生成任务ID
 const scriptPath = path.dirname(fileURLToPath(import.meta.url));
 const taskID = dayjs().format("YYYYMMDD_HHmmssSSS");
 
+// 设置命令行参数
 const program = new Command();
 
 program
@@ -49,6 +54,7 @@ program
 
 const options = program.opts() as CLIOptions;
 
+// 验证必要的选项是否提供
 if (
   !options.name ||
   !options.filePath ||
@@ -61,8 +67,10 @@ if (
   process.exit(1);
 }
 
+// 创建API实例
 createAPIInstance(options.apiBase, options.referer);
 
+// 记录任务信息
 function logTaskInfo(options: CLIOptions): void {
   console.log("\n以下为本次脚本传入的参数:");
   console.log(chalk.gray(JSON.stringify(options, null, 2)));
@@ -71,12 +79,14 @@ function logTaskInfo(options: CLIOptions): void {
   console.log("\n");
 }
 
+// 生成重新运行命令
 function generateReRunCommand(options: CLIOptions): string {
   return `lava-anime-lib-rclone-uploader ${Object.entries(options)
     .map(([key, value]) => `--${key} "${value}"`)
     .join(" ")}`;
 }
 
+// 解析路径信息
 function parsePathInfo(
   filePath: string,
   savePath: string
@@ -101,6 +111,7 @@ function parsePathInfo(
   return { inLibPath, bgmID, animeTitle };
 }
 
+// 创建上传任务
 function createUploadTasks(
   filePath: string,
   inLibPath: string[],
@@ -113,6 +124,7 @@ function createUploadTasks(
   }));
 }
 
+// 执行上传任务
 async function runUploadTask(task: UploadTask): Promise<void> {
   const rcloneCommand = `rclone copy "${task.fromPath}" "${task.destPath}" -P --local-encoding None --onedrive-encoding None`;
   console.log(
@@ -150,6 +162,7 @@ async function runUploadTask(task: UploadTask): Promise<void> {
   });
 }
 
+// 处理上传失败
 async function handleUploadFailures(
   failedTasks: UploadTask[],
   allTasks: UploadTask[]
@@ -193,6 +206,29 @@ async function handleUploadFailures(
   }
 }
 
+// 从视频中提取字幕
+async function extractSubtitlesFromVideos(filePath: string): Promise<string[]> {
+  const videoExtensions = ['.mkv', '.mp4'];
+  let videoFiles: string[] = [];
+
+  if (statSync(filePath).isDirectory()) {
+    const files = readdirSync(filePath);
+    videoFiles = files.filter(file => videoExtensions.includes(path.extname(file).toLowerCase()))
+      .map(file => path.join(filePath, file));
+  } else if (videoExtensions.includes(path.extname(filePath).toLowerCase())) {
+    videoFiles = [filePath];
+  }
+
+  const allSubtitles: string[] = [];
+  for (const videoFile of videoFiles) {
+    const subtitles = await extractAndSaveSubtitles(videoFile);
+    allSubtitles.push(...subtitles);
+  }
+
+  return allSubtitles;
+}
+
+// 主函数
 async function main() {
   logTaskInfo(options);
 
@@ -218,8 +254,35 @@ async function main() {
   } else {
     await reportSuccess(options.savePath, options.name);
   }
+
+  // 提取字幕
+  console.log(chalk.blue("\n开始提取字幕..."));
+  const subtitles = await extractSubtitlesFromVideos(options.filePath);
+
+  if (subtitles.length > 0) {
+    console.log(chalk.green(`成功提取 ${subtitles.length} 个字幕文件`));
+
+    // 上传字幕文件
+    console.log(chalk.blue("\n开始上传字幕文件..."));
+    const subtitleUploadTasks = createUploadTasks(
+      path.dirname(options.filePath),
+      inLibPath,
+      options.rcloneDestinations
+    );
+
+    for (const task of subtitleUploadTasks) {
+      try {
+        await runUploadTask(task);
+      } catch (error) {
+        console.error(chalk.red(`上传字幕文件失败: ${error}`));
+      }
+    }
+  } else {
+    console.log(chalk.yellow("未找到可提取的字幕"));
+  }
 }
 
+// 运行主函数并处理错误
 main().catch((error) => {
   console.error(chalk.red("发生错误:"), error);
   process.exit(1);
