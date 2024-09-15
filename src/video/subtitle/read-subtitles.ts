@@ -6,6 +6,7 @@ interface SubtitleInfo {
   index: number;
   filePath: string;
   language?: string;
+  title?: string;
 }
 
 /**
@@ -19,7 +20,7 @@ export async function readSubtitles(filePath: string): Promise<SubtitleInfo[]> {
     const ffprobe = spawn('ffprobe', [
       '-v', 'quiet',
       '-print_format', 'json',
-      '-show_entries', 'stream=index,codec_name:stream_tags=language',
+      '-show_streams',
       '-select_streams', 's',
       filePath
     ]);
@@ -44,8 +45,9 @@ export async function readSubtitles(filePath: string): Promise<SubtitleInfo[]> {
 
           // 遍历每个字幕流
           for (const stream of subtitleStreams) {
-            if (stream.codec_name === 'subrip' || stream.codec_name === 'ass') {
-              const format = stream.codec_name === 'subrip' ? 'srt' : 'ass';
+            const supportedCodecs = ['subrip', 'ass', 'mov_text'];
+            if (supportedCodecs.includes(stream.codec_name)) {
+              const format: 'srt' | 'ass' = stream.codec_name === 'ass' ? 'ass' : 'srt';
               // 提取字幕内容
               const content = await readSubtitleContent(filePath, stream.index, format);
               subtitles.push({
@@ -53,7 +55,8 @@ export async function readSubtitles(filePath: string): Promise<SubtitleInfo[]> {
                 format,
                 index: stream.index,
                 filePath,
-                language: stream.tags?.language
+                language: stream.tags?.language,
+                title: stream.tags?.handler_name
               });
             }
           }
@@ -93,7 +96,7 @@ async function readSubtitleContent(filePath: string, streamIndex: number, format
     });
 
     ffmpeg.stderr.on('data', (data) => {
-      console.error(`ffmpeg stderr: ${data}`);
+      // console.error(`ffmpeg stderr: ${data}`);
     });
 
     ffmpeg.on('close', (code) => {

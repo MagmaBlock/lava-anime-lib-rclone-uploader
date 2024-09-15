@@ -19,9 +19,11 @@ export async function extractAndSaveSubtitles(videoFilePath: string): Promise<st
 
   // 遍历每个提取的字幕
   for (const subtitle of subtitles) {
-    // 构建字幕文件名，包含语言信息（如果有）
-    const language = subtitle.language ? `.${subtitle.language}` : '';
-    const subtitleFileName = `${videoName}.${subtitle.index}${language}.${subtitle.format}`;
+    // 构建字幕文件名
+    const parts = [videoName, subtitle.index.toString()];
+    if (subtitle.language) parts.push(subtitle.language);
+    if (subtitle.title) parts.push(subtitle.title);
+    const subtitleFileName = `${parts.join('.')}.${subtitle.format}`;
     const subtitleFilePath = path.join(videoDir, subtitleFileName);
 
     // 将字幕内容写入文件

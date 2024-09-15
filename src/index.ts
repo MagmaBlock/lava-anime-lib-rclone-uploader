@@ -201,8 +201,6 @@ async function handleUploadFailures(
       })
     );
     console.error(chalk.red(`上传重试失败! 请检查任务 ${taskID} 并及时重传`));
-  } else {
-    await reportSuccess(options.savePath, options.name);
   }
 }
 
@@ -221,8 +219,11 @@ async function extractSubtitlesFromVideos(filePath: string): Promise<string[]> {
 
   const allSubtitles: string[] = [];
   for (const videoFile of videoFiles) {
+    console.log(`正在提取: ${videoFile}\n`);
     const subtitles = await extractAndSaveSubtitles(videoFile);
     allSubtitles.push(...subtitles);
+    console.log(`提取到的字幕: `);
+    console.log(chalk.gray(subtitles.join("\n")));
   }
 
   return allSubtitles;
@@ -251,12 +252,10 @@ async function main() {
 
   if (failedTasks.length) {
     await handleUploadFailures(failedTasks, uploadTasks);
-  } else {
-    await reportSuccess(options.savePath, options.name);
   }
 
   // 提取字幕
-  console.log(chalk.blue("\n开始提取字幕..."));
+  console.log(chalk.green("\n开始提取字幕..."));
   const subtitles = await extractSubtitlesFromVideos(options.filePath);
 
   if (subtitles.length > 0) {
@@ -264,22 +263,26 @@ async function main() {
 
     // 上传字幕文件
     console.log(chalk.blue("\n开始上传字幕文件..."));
-    const subtitleUploadTasks = createUploadTasks(
-      path.dirname(options.filePath),
-      inLibPath,
-      options.rcloneDestinations
-    );
+    for (const subtitle of subtitles) {
+      const subtitleUploadTasks = createUploadTasks(
+        subtitle,
+        inLibPath,
+        options.rcloneDestinations
+      );
 
-    for (const task of subtitleUploadTasks) {
-      try {
-        await runUploadTask(task);
-      } catch (error) {
-        console.error(chalk.red(`上传字幕文件失败: ${error}`));
+      for (const task of subtitleUploadTasks) {
+        try {
+          await runUploadTask(task);
+        } catch (error) {
+          console.error(chalk.red(`上传字幕文件失败: ${error}`));
+        }
       }
     }
   } else {
     console.log(chalk.yellow("未找到可提取的字幕"));
   }
+
+  await reportSuccess(options.savePath, options.name);
 }
 
 // 运行主函数并处理错误
